@@ -1,0 +1,65 @@
+name: 'Publish to Azure Storage'
+description: 'Publish a static website or files to Azure Storage, optionally purging a CDN at the same time'
+
+# See https://docs.microsoft.com/en-us/azure/storage/blobs/storage-blobs-static-site-github-actions
+
+inputs:
+  azure-credentials:
+    description: 'Azure credentials; not required if using a connection string; required if purging the cdn endpoint'
+    required: false
+  storage-account-name:
+    description: 'Storage account name'
+    required: true
+  storage-account-connection-string:
+    description: 'Storage account key; not required if using azure credentials'
+    required: false
+  contianer-name:
+    description: 'Container to upload files to'
+    required: true
+  destination-folder:
+    description: 'Path within contianer to upload files to; must begin with /'
+    default: '/'
+  cdn-profile-name:
+    description: 'CDN Profile Name of CDN Endpoint to purge'
+    required: false
+  cdn-endpoint:
+    description: 'CDN Endpoint to purge'
+    required: false
+  cdn-resource-group:
+    description: 'CDN Resource Group of CDN Endpoint to purge"
+    required: false
+  source-folder:
+    description: 'Path to upload files from'
+    required: true
+    default: '.'
+
+runs:
+  using: "composite"
+  steps:
+    - name: Login to Azure CLI
+      uses: azure/login@v1
+      if: ${{ inputs.azure-credentials != '' }}
+      with:
+        creds: ${{ inputs.azure-credentials }}
+
+    - name: Upload to blob storage
+      uses: azure/CLI@v1
+      env:
+        AZURE_STORAGE_ACCOUNT: ${{ inputs.storage-account-name }}
+        AZURE_STORAGE_CONNECTION_STRING: ${{ inputs.storage-account-connection-string }}
+      with:
+        azcliversion: 2.0.72
+        inlineScript: |
+          az storage blob upload-batch -d "${{ inputs.container-name }}${{ inputs.destination-folder }}" -s "${{ inputs.source-folder }}"
+
+    - name: Purge CDN endpoint
+      uses: azure/CLI@v1
+      if: ${{ inputs.cdn-profile-name != '' }}
+      with:
+        azcliversion: 2.0.72
+        inlineScript: |
+          az cdn endpoint purge --content-paths "/*" --profile-name "${{ inputs.cdn-profile-name }}" --name "${{ inputs.cdn-endpoint }}" --resource-group "${{ inputs.cdn-resource-group }}"
+
+    - name: Logout of Azure CLI
+      if ${{ inputs.azure-credentials != '' }}
+      run: az logout
