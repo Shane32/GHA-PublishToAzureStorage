@@ -26,7 +26,7 @@ inputs:
     description: 'CDN Endpoint to purge'
     required: false
   cdn-resource-group:
-    description: 'CDN Resource Group of CDN Endpoint to purge"
+    description: 'CDN Resource Group of CDN Endpoint to purge'
     required: false
   source-folder:
     description: 'Path to upload files from'
